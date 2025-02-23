@@ -8,7 +8,6 @@ import os
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("green")
 
-
 class SecurityScanner:
     def __init__(self, root):
         self.root = root
@@ -93,7 +92,7 @@ class SecurityScanner:
         self.scan_button.configure(state="disabled")
         self.progress.start()
 
-        
+       
         cam_mic_results = self.check_camera_mic()
         if cam_mic_results:
             self.log_result("[!] Alertas de câmera/microfone:")
@@ -102,7 +101,7 @@ class SecurityScanner:
         else:
             self.log_result("[✓] Nenhum acesso suspeito a câmera/microfone.")
 
-        
+       
         net_results = self.check_network()
         if net_results:
             self.log_result("\n[!] Conexões de rede suspeitas:")
@@ -122,8 +121,9 @@ class SecurityScanner:
 
         self.log_result("\n[✓] Escaneamento concluído.")
 
-       
-        with open("security_report.txt", "w") as f:
+      
+        desktop_path = os.path.expanduser("~") + "/Desktop/security_report.txt"
+        with open(desktop_path, "w") as f:
             f.write(self.result_text.get("0.0", "end"))
 
         self.progress.stop()
@@ -135,12 +135,10 @@ class SecurityScanner:
             thread = threading.Thread(target=self.scan_system)
             thread.start()
 
-
 def main():
     root = ctk.CTk()
     app = SecurityScanner(root)
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
