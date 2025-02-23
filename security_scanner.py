@@ -12,7 +12,7 @@ ctk.set_default_color_theme("green")
 class SecurityScanner:
     def __init__(self, root):
         self.root = root
-        self.root.title("Security Scanner - by euucoding")
+        self.root.title("Security Scanner - by euuCode")
         self.root.geometry("800x500")
         self.root.resizable(False, False)
 
