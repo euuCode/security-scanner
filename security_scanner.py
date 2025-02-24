@@ -4,6 +4,7 @@ import customtkinter as ctk
 import threading
 import time
 import os
+import hashlib
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("green")
@@ -36,7 +37,6 @@ class SecurityScanner:
         self.scanning = False
 
     def log_result(self, message, delay=0.5):
-        """Exibe mensagem na interface com um pequeno delay."""
         self.result_text.insert("end", message + "\n")
         self.result_text.update()
         time.sleep(delay)
@@ -53,7 +53,6 @@ class SecurityScanner:
         return suspicious
 
     def resolve_ip(self, ip):
-        """Tenta obter o nome do host a partir do IP"""
         try:
             return socket.gethostbyaddr(ip)[0]
         except socket.herror:
@@ -64,11 +63,10 @@ class SecurityScanner:
         for conn in psutil.net_connections(kind='inet'):
             if conn.status == 'ESTABLISHED' and conn.raddr:
                 ip = conn.raddr.ip
-                if ip.startswith(("192.168", "127.", "10.")):  # Ignorar redes locais
+                if ip.startswith(("192.168", "127.", "10.")):
                     continue
                 
-                hostname = self.resolve_ip(ip)  # Resolver nome do host
-                
+                hostname = self.resolve_ip(ip)
                 suspicious.append(f"Conexão ativa com {hostname} ({ip}:{conn.raddr.port}) (PID: {conn.pid})")
         return suspicious
 
@@ -84,6 +82,33 @@ class SecurityScanner:
                 pass
         return suspicious
 
+    def check_files(self, directory=None):
+        suspicious = []
+        malware_hashes = {
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "Trojan Example",
+            "d41d8cd98f00b204e9800998ecf8427e": "Virus Sample"
+        }
+
+        if not directory:
+            directory = os.path.expanduser("~")
+
+        self.log_result(f"[*] Escaneando arquivos em {directory}...")
+        
+        for root, _, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                try:
+                    with open(file_path, "rb") as f:
+                        file_hash = hashlib.sha256(f.read()).hexdigest()
+                    
+                    if file_hash in malware_hashes:
+                        suspicious.append(f"Arquivo suspeito: {file_path} (Possível {malware_hashes[file_hash]})")
+                except (PermissionError, IOError):
+                    self.log_result(f"[!] Erro ao escanear {file_path} - Permissão negada ou arquivo inacessível.")
+                    continue
+
+        return suspicious
+
     def scan_system(self):
         self.result_text.delete("0.0", "end")
         self.log_result("[*] Iniciando escaneamento do sistema...\n")
@@ -92,7 +117,6 @@ class SecurityScanner:
         self.scan_button.configure(state="disabled")
         self.progress.start()
 
-       
         cam_mic_results = self.check_camera_mic()
         if cam_mic_results:
             self.log_result("[!] Alertas de câmera/microfone:")
@@ -101,7 +125,6 @@ class SecurityScanner:
         else:
             self.log_result("[✓] Nenhum acesso suspeito a câmera/microfone.")
 
-       
         net_results = self.check_network()
         if net_results:
             self.log_result("\n[!] Conexões de rede suspeitas:")
@@ -110,7 +133,6 @@ class SecurityScanner:
         else:
             self.log_result("\n[✓] Nenhuma conexão suspeita detectada.")
 
-       
         mal_results = self.check_malware()
         if mal_results:
             self.log_result("\n[!] Possíveis malwares detectados:")
@@ -119,9 +141,16 @@ class SecurityScanner:
         else:
             self.log_result("\n[✓] Nenhum malware óbvio detectado.")
 
+        file_results = self.check_files()
+        if file_results:
+            self.log_result("\n[!] Arquivos Suspeitos Detectados:")
+            for result in file_results:
+                self.log_result(f"- {result}")
+        else:
+            self.log_result("\n[✓] Nenhum arquivo suspeito detectado.")
+
         self.log_result("\n[✓] Escaneamento concluído.")
 
-      
         desktop_path = os.path.expanduser("~") + "/Desktop/security_report.txt"
         with open(desktop_path, "w") as f:
             f.write(self.result_text.get("0.0", "end"))
