@@ -5,6 +5,7 @@ import threading
 import time
 import os
 import hashlib
+import tkinter as tk  
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("green")
@@ -23,21 +24,45 @@ class SecurityScanner:
                                         font=("Helvetica", 24, "bold"))
         self.title_label.pack(pady=10)
 
-        self.scan_button = ctk.CTkButton(self.main_frame, text="Iniciar Escaneamento",
-                                         command=self.start_scan, font=("Helvetica", 14, "bold"),
-                                         corner_radius=8, height=40)
-        self.scan_button.pack(pady=15)
+        # Novo: Campo pra inserir caminho de pasta/arquivo
+        self.path_frame = ctk.CTkFrame(self.main_frame, corner_radius=8)
+        self.path_frame.pack(pady=10)
+
+        self.path_entry = ctk.CTkEntry(self.path_frame, width=500, height=35, font=("Helvetica", 12),
+                                       placeholder_text="Insira o caminho de uma pasta ou arquivo",
+                                       corner_radius=8, fg_color="#3a3a3a", text_color="#e0e0e0")
+        self.path_entry.pack(side=tk.LEFT, padx=5)
+
+        self.browse_button = ctk.CTkButton(self.path_frame, text="Selecionar Pasta",
+                                           command=self.browse_directory, font=("Helvetica", 12, "bold"),
+                                           corner_radius=8, height=35, fg_color="#4CAF50", hover_color="#45a049")
+        self.browse_button.pack(side=tk.LEFT, padx=5)
+
+        
+        self.scan_intruders_button = ctk.CTkButton(self.main_frame, text="Scanner de Intrusos",
+                                                   command=self.start_scan_intruders, font=("Helvetica", 14, "bold"),
+                                                   corner_radius=8, height=40, fg_color="#4CAF50",
+                                                   hover_color="#45a049")
+        self.scan_intruders_button.pack(pady=5)
+
+        self.scan_files_button = ctk.CTkButton(self.main_frame, text="Scanner de Arquivos",
+                                               command=self.start_scan_files, font=("Helvetica", 14, "bold"),
+                                               corner_radius=8, height=40, fg_color="#2196F3",
+                                               hover_color="#1976D2")
+        self.scan_files_button.pack(pady=5)
 
         self.result_text = ctk.CTkTextbox(self.main_frame, width=700, height=250,
-                                          font=("Consolas", 12), corner_radius=8)
+                                          font=("Consolas", 12), corner_radius=8, state="disabled")
         self.result_text.pack(pady=15)
 
         self.progress = ctk.CTkProgressBar(self.main_frame, width=600, mode="indeterminate")
         self.progress.pack(pady=10)
         self.scanning = False
 
-    def log_result(self, message, delay=0.5):
+    def log_result(self, message, delay=0.1):
+        self.result_text.configure(state="normal")
         self.result_text.insert("end", message + "\n")
+        self.result_text.configure(state="disabled")
         self.result_text.update()
         time.sleep(delay)
 
@@ -48,8 +73,8 @@ class SecurityScanner:
                 name = proc.info['name'].lower()
                 if any(keyword in name for keyword in ["cam", "mic", "video", "audio"]):
                     suspicious.append(f"Possível acesso a câmera/microfone: {name} (PID: {proc.info['pid']})")
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
         return suspicious
 
     def resolve_ip(self, ip):
@@ -78,43 +103,64 @@ class SecurityScanner:
                 name = proc.info['name'].lower()
                 if any(sig in name for sig in malware_signatures):
                     suspicious.append(f"Possível malware detectado: {name} (PID: {proc.info['pid']})")
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
         return suspicious
 
-    def check_files(self, directory=None):
+    def check_files(self, path=None):
         suspicious = []
         malware_hashes = {
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "Trojan Example",
             "d41d8cd98f00b204e9800998ecf8427e": "Virus Sample"
         }
 
-        if not directory:
-            directory = os.path.expanduser("~")
+        if not path:
+            path = os.path.expanduser("~")
 
-        self.log_result(f"[*] Escaneando arquivos em {directory}...")
+        self.log_result(f"[*] Escaneando arquivos em {path}...")
         
-        for root, _, files in os.walk(directory):
-            for file in files:
-                file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "rb") as f:
-                        file_hash = hashlib.sha256(f.read()).hexdigest()
-                    
-                    if file_hash in malware_hashes:
-                        suspicious.append(f"Arquivo suspeito: {file_path} (Possível {malware_hashes[file_hash]})")
-                except (PermissionError, IOError):
-                    self.log_result(f"[!] Erro ao escanear {file_path} - Permissão negada ou arquivo inacessível.")
-                    continue
+        if os.path.isfile(path):
+            try:
+                with open(path, "rb") as f:
+                    file_hash = hashlib.sha256(f.read()).hexdigest()
+                if file_hash in malware_hashes:
+                    suspicious.append(f"Arquivo suspeito: {path} (Possível {malware_hashes[file_hash]})")
+            except (PermissionError, IOError, MemoryError):
+                self.log_result(f"[!] Erro ao escanear {path} - Permissão negada, inacessível ou muito grande.")
+                return suspicious
+        elif os.path.isdir(path):
+            for root, _, files in os.walk(path, topdown=True, onerror=None):
+                for file in files[:50]:
+                    file_path = os.path.join(root, file)
+                    try:
+                        with open(file_path, "rb") as f:
+                            file_hash = hashlib.sha256(f.read()).hexdigest()
+                        if file_hash in malware_hashes:
+                            suspicious.append(f"Arquivo suspeito: {file_path} (Possível {malware_hashes[file_hash]})")
+                    except (PermissionError, IOError, MemoryError):
+                        self.log_result(f"[!] Erro ao escanear {file_path} - Permissão negada, inacessível ou muito grande.")
+                        continue
+                    except Exception as e:
+                        self.log_result(f"[!] Erro inesperado ao escanear {file_path}: {str(e)}")
+                        continue
+        else:
+            self.log_result(f"[!] Caminho inválido: {path}")
 
         return suspicious
 
-    def scan_system(self):
+    def browse_directory(self):
+        directory = filedialog.askdirectory(title="Selecione uma pasta para escanear")
+        if directory:
+            self.path_entry.delete(0, "end")
+            self.path_entry.insert(0, directory)
+
+    def scan_intruders(self):
         self.result_text.delete("0.0", "end")
-        self.log_result("[*] Iniciando escaneamento do sistema...\n")
+        self.log_result("[*] Iniciando escaneamento de intrusos...\n")
 
         self.scanning = True
-        self.scan_button.configure(state="disabled")
+        self.scan_intruders_button.configure(state="disabled")
+        self.scan_files_button.configure(state="disabled")
         self.progress.start()
 
         cam_mic_results = self.check_camera_mic()
@@ -141,7 +187,28 @@ class SecurityScanner:
         else:
             self.log_result("\n[✓] Nenhum malware óbvio detectado.")
 
-        file_results = self.check_files()
+        self.log_result("\n[✓] Escaneamento de intrusos concluído.")
+
+        desktop_path = os.path.expanduser("~") + "/Desktop/intruders_report.txt"
+        with open(desktop_path, "w") as f:
+            f.write(self.result_text.get("0.0", "end"))
+
+        self.progress.stop()
+        self.scanning = False
+        self.scan_intruders_button.configure(state="normal")
+        self.scan_files_button.configure(state="normal")
+
+    def scan_files(self):
+        self.result_text.delete("0.0", "end")
+        self.log_result("[*] Iniciando escaneamento de arquivos...\n")
+
+        self.scanning = True
+        self.scan_intruders_button.configure(state="disabled")
+        self.scan_files_button.configure(state="disabled")
+        self.progress.start()
+
+        path = self.path_entry.get().strip() or None
+        file_results = self.check_files(path)
         if file_results:
             self.log_result("\n[!] Arquivos Suspeitos Detectados:")
             for result in file_results:
@@ -149,19 +216,25 @@ class SecurityScanner:
         else:
             self.log_result("\n[✓] Nenhum arquivo suspeito detectado.")
 
-        self.log_result("\n[✓] Escaneamento concluído.")
+        self.log_result("\n[✓] Escaneamento de arquivos concluído.")
 
-        desktop_path = os.path.expanduser("~") + "/Desktop/security_report.txt"
+        desktop_path = os.path.expanduser("~") + "/Desktop/files_report.txt"
         with open(desktop_path, "w") as f:
             f.write(self.result_text.get("0.0", "end"))
 
         self.progress.stop()
         self.scanning = False
-        self.scan_button.configure(state="normal")
+        self.scan_intruders_button.configure(state="normal")
+        self.scan_files_button.configure(state="normal")
 
-    def start_scan(self):
+    def start_scan_intruders(self):
         if not self.scanning:
-            thread = threading.Thread(target=self.scan_system)
+            thread = threading.Thread(target=self.scan_intruders)
+            thread.start()
+
+    def start_scan_files(self):
+        if not self.scanning:
+            thread = threading.Thread(target=self.scan_files)
             thread.start()
 
 def main():
