@@ -6,6 +6,7 @@ import time
 import os
 import hashlib
 import tkinter as tk  
+import csv  
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("green")
@@ -24,7 +25,7 @@ class SecurityScanner:
                                         font=("Helvetica", 24, "bold"))
         self.title_label.pack(pady=10)
 
-        # Novo: Campo pra inserir caminho de pasta/arquivo
+      
         self.path_frame = ctk.CTkFrame(self.main_frame, corner_radius=8)
         self.path_frame.pack(pady=10)
 
@@ -38,7 +39,7 @@ class SecurityScanner:
                                            corner_radius=8, height=35, fg_color="#4CAF50", hover_color="#45a049")
         self.browse_button.pack(side=tk.LEFT, padx=5)
 
-        
+       
         self.scan_intruders_button = ctk.CTkButton(self.main_frame, text="Scanner de Intrusos",
                                                    command=self.start_scan_intruders, font=("Helvetica", 14, "bold"),
                                                    corner_radius=8, height=40, fg_color="#4CAF50",
@@ -109,10 +110,23 @@ class SecurityScanner:
 
     def check_files(self, path=None):
         suspicious = []
-        malware_hashes = {
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "Trojan Example",
-            "d41d8cd98f00b204e9800998ecf8427e": "Virus Sample"
-        }
+        
+        suspicious_extensions = {".exe", ".bat", ".js", ".dll", ".vbs", ".scr"}
+        
+        
+        malware_hashes = {}
+        try:
+            with open('malware_hashes.csv', 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    malware_hashes[row['hash']] = row['description']
+        except FileNotFoundError:
+           
+            malware_hashes = {
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "Trojan Example",
+                "d41d8cd98f00b204e9800998ecf8427e": "Virus Sample"
+            }
+            self.log_result("[!] Arquivo malware_hashes.csv não encontrado. Usando hashes padrão.")
 
         if not path:
             path = os.path.expanduser("~")
@@ -121,6 +135,10 @@ class SecurityScanner:
         
         if os.path.isfile(path):
             try:
+                file_name = os.path.basename(path)
+                if any(file_name.lower().endswith(ext) for ext in suspicious_extensions):
+                    suspicious.append(f"Arquivo potencialmente suspeito (extensão): {path}")
+                
                 with open(path, "rb") as f:
                     file_hash = hashlib.sha256(f.read()).hexdigest()
                 if file_hash in malware_hashes:
@@ -130,9 +148,13 @@ class SecurityScanner:
                 return suspicious
         elif os.path.isdir(path):
             for root, _, files in os.walk(path, topdown=True, onerror=None):
-                for file in files[:50]:
+                for file in files[:50]: 
                     file_path = os.path.join(root, file)
                     try:
+                        file_name = os.path.basename(file_path)
+                        if any(file_name.lower().endswith(ext) for ext in suspicious_extensions):
+                            suspicious.append(f"Arquivo potencialmente suspeito (extensão): {file_path}")
+                        
                         with open(file_path, "rb") as f:
                             file_hash = hashlib.sha256(f.read()).hexdigest()
                         if file_hash in malware_hashes:
