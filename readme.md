@@ -1,6 +1,6 @@
 # Security Scanner - by euuCode
 
-![Security Scanner Screenshot](screenshot.png) <!-- Substitua por uma imagem real do visual do programa -->
+![Security Scanner Screenshot] 
 
 O **Security Scanner** é uma ferramenta de código aberto para análise de segurança em computadores e arquivos, projetada para detectar atividades suspeitas (câmera/microfone, redes, malwares) e arquivos potencialmente perigosos (baseados em extensões). Feito com uma interface gráfica moderna usando CustomTkinter.
 
@@ -13,6 +13,7 @@ O **Security Scanner** é uma ferramenta de código aberto para análise de segu
 ## Como usar
 ### Pré-requisitos
 - Python 3.x instalado.
+- Vs Code no modo "In a Trusted Window"
 
 ### Uso
 - Clone o repositório:
