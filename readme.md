@@ -1,6 +1,6 @@
 # Security Scanner - by euuCode
 
-![Security Scanner Screenshot] 
+
 
 O **Security Scanner** é uma ferramenta de código aberto para análise de segurança em computadores e arquivos, projetada para detectar atividades suspeitas (câmera/microfone, redes, malwares) e arquivos potencialmente perigosos (baseados em extensões). Feito com uma interface gráfica moderna usando CustomTkinter.
 
