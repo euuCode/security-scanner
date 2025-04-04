@@ -46,8 +46,6 @@ Consulte os [releases](https://github.com/euuCode/security-scanner/releases) par
 - Configurações personalizáveis (limite de arquivos, extensões suspeitas).
 - Progresso real nas barras de progresso.
 
-## Contribuições
-Contribuições são bem-vindas! Abra issues para bugs ou sugestões, e envie pull requests para melhorias. Siga o código de conduta no [CONTRIBUTING.md](CONTRIBUTING.md) (crie este arquivo com regras básicas, se não existir).
 
 ## Licença
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
